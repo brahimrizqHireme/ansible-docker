@@ -1,0 +1,34 @@
+---
+- name: création du conteneur
+  hosts: localhost
+  sudo: True
+  tasks:
+
+    - name: application des droits requis par ssh
+      file:
+        path: "{{ ansible_env.PWD }}/conteneur/clefs/id_rsa"
+        mode: 0600
+
+    - name: mise à disposition de l'image docker
+      docker_image: path="conteneur" name="conteneur" state=present
+
+    - name: création du conteneur
+      docker:
+        name: "{{ nom_conteneur }}"
+        image: conteneur
+        state: present
+
+    - name: ajout du conteneur à l'inventaire des hôtes
+      add_host:
+        hostname: "{{ item.Name }}"
+        groups: docker
+        ansible_ssh_host: "{{ item.NetworkSettings.IPAddress }}"
+        ansible_ssh_port: 22
+      when: item.State.Running == True
+      with_items: docker_containers
+
+- name: application du rôle
+  hosts: localhost
+  remote_user: root
+  roles:
+   - "{{ role }}"
